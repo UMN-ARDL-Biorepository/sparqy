@@ -223,11 +223,11 @@ def main(
     )
     sql = parse_sql_file(sql_file, trial_code)
     trial_inventory = con.sql(sql).execute()
+    trial_inventory = extract_sampleid(trial_inventory)
     if not no_viable:
         trial_inventory = flag_viable(
             trial_inventory, exclude_conditions, exclude_matcodes
         )
-    trial_inventory = extract_sampleid(trial_inventory)
 
     final_parquet_file_path = parquet_path(
         trial_code=trial_code,
