@@ -12,3 +12,7 @@ wheels/
 # Ruff
 .ruff_cache
 .env
+
+# Pytest
+.pytest_cache
+.coverage
