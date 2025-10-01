@@ -1,7 +1,15 @@
+import pytest
 import pandas as pd
 import numpy as np
 
 from .main import extract_sampleid
+
+
+@pytest.fixture
+def specimen_df():
+    return SpecimenDF(
+        [Specimen("SAMPLEID:12345, Other info"), Specimen("No sample id here")]
+    )
 
 
 class Specimen:
@@ -14,11 +22,8 @@ class SpecimenDF:
         self.df = pd.DataFrame([specimen.__dict__ for specimen in specimens])
 
 
-def test_extract_sampleid():
-    specimen_df = SpecimenDF(
-        [Specimen("SAMPLEID:12345, Other info"), Specimen("No sample id here")]
-    )
-    print(specimen_df.df)
+@pytest.fixture
+def test_extract_sampleid(specimen_df):
     extract_sampleid(specimen_df.df)
     assert specimen_df.df["SAMPLEID"].iloc[0] is not None
     assert specimen_df.df["SAMPLEID"].iloc[0] == "12345"
