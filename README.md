@@ -1,5 +1,8 @@
 # Sparqy
 
+[![CodeQL](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/github-code-scanning/codeql)
+[![Dependabot Updates](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates)
+
 Sparqy downloads specimen data from a StarLIMS database using [Pandas](https://pandas.pydata.org/docs) and [PyODBC](https://learn.microsoft.com/en-us/sql/connect/python/pyodbc) and stores it in a local [Parquet file](https://parquet.apache.org/) for further analysis.
 
 ## Installation
