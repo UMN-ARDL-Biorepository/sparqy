@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 from pathlib import Path
 from logging import basicConfig, INFO, DEBUG, getLogger
 import argparse
@@ -211,8 +210,6 @@ def parquet_path(trial_code, output_dir, include_dsn_in_filename, add_trial_to_p
     final_parquet_path.mkdir(parents=True, exist_ok=True)
     final_parquet_file_path = final_parquet_path / final_parquet_file
     return final_parquet_file_path
-
-
 
 
 async def main(
