@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from pathlib import Path
 from logging import basicConfig, INFO, DEBUG, getLogger
 import argparse
@@ -150,11 +151,14 @@ def parse_sql_file(sql_file, trial_code):
         return
 
 
-async def query_to_df(dsn, query):
+async def query_to_df(dsn, query, trial_code=None):
     async with aioodbc.create_pool(dsn=dsn) as pool:
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(query)
+                if trial_code is not None:
+                    await cur.execute(query, (trial_code,))
+                else:
+                    await cur.execute(query)
                 rows = await cur.fetchall()
                 df = pd.DataFrame.from_records(
                     rows, columns=[desc[0] for desc in cur.description]
@@ -194,6 +198,12 @@ def extract_sampleid(df):
     return df
 
 
+# Extract SampleID using alternative pattern - any digits after LAB_ID:
+def extract_sampleid2(df):
+    df["SAMPLEID2"] = df["COMMENTS"].str.extract(r"LAB_ID:(\d+)")
+    return df
+
+
 def parquet_path(trial_code, output_dir, include_dsn_in_filename, add_trial_to_path):
     # Add DSN to filename if specified
     if include_dsn_in_filename:
@@ -210,6 +220,12 @@ def parquet_path(trial_code, output_dir, include_dsn_in_filename, add_trial_to_p
     final_parquet_path.mkdir(parents=True, exist_ok=True)
     final_parquet_file_path = final_parquet_path / final_parquet_file
     return final_parquet_file_path
+
+
+def redact_dsn_password(dsn: str) -> str:
+    # Replace PWD=...; with PWD=****;
+    # handles case like PWD=password123;
+    return re.sub(r"(PWD=)[^;]*", r"\1****", dsn, flags=re.IGNORECASE)
 
 
 async def main(
@@ -242,6 +258,8 @@ async def main(
             return
         logger.debug(f"SQL Query: {query}")
         dsn = f"Driver={db_driver};SERVER={db_host};DATABASE={db_name};"
+        if db_port:
+            dsn += f"PORT={db_port};"
         if db_user and db_password:
             dsn += f"UID={db_user};PWD={db_password};"
         else:
@@ -249,8 +267,9 @@ async def main(
         logger.info(
             f"Connecting to database '{db_name}' on host '{db_host}' using driver '{db_driver}'"
         )
-        trial_inventory = await query_to_df(dsn, query)
+        trial_inventory = await query_to_df(dsn, query, trial_code=trial_code)
         trial_inventory = extract_sampleid(trial_inventory)
+        trial_inventory = extract_sampleid2(trial_inventory)
         if not no_viable:
             trial_inventory = flag_viable(
                 trial_inventory, exclude_conditions, exclude_matcodes
