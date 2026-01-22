@@ -9,7 +9,11 @@ SELECT
     , IT.AMOUNT_UNIT_CODE
     , IT.THAWCOUNT
     , INV.EXTERNAL_CODE AS [SEQ]
+<<<<<<< HEAD
     , CAST(INV.EXTERNAL_CODE AS INT) AS [SEQ_NUM]
+=======
+    , TRY_CAST(INV.EXTERNAL_CODE AS INT) AS [SEQ_NUM]
+>>>>>>> 2e867e67fedbf365cdabd2360e531b4a1bc95eaf
     , (
         CASE
             WHEN FREEZER.LOCATIONCODE IS NOT NULL THEN FREEZER.LOCATION_NAME
@@ -95,7 +99,4 @@ FROM INVENTORY_VLA INV
     LEFT JOIN ROOMS ON FREEZER.ROOM_ID = ROOMS.ROOM_ID
     LEFT JOIN BUILDINGS ON ROOMS.BUILDING_ID = BUILDINGS.BUILDING_ID
 WHERE
-    -- Yes, we're filtering by last name to get trial code... don't ask.
-    -- And yes, this is safe in this context - we control TRIAL_CODE input elsewhere.
-    -- Plus, aioodbc parameterization doesn't work in this scenario.
     CR.LAST_NAME = ?
