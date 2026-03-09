@@ -2,7 +2,7 @@
 
 [![CodeQL](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/github-code-scanning/codeql)
 [![Dependabot Updates](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/UMN-ARDL-Biorepository/sparqy/main.svg?badge_token=yhcp_p6pQIWA3mlafHyVew)](https://results.pre-commit.ci/latest/github/UMN-ARDL-Biorepository/sparqy/main?badge_token=yhcp_p6pQIWA3mlafHyVew)
+[![Prek checks](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/pre-commit.yml)
 
 Sparqy downloads specimen data from a StarLIMS database using [Pandas](https://pandas.pydata.org/docs), [SQLAlchemy](https://www.sqlalchemy.org/), and [PyODBC](https://learn.microsoft.com/en-us/sql/connect/python/pyodbc) (with [aioodbc](https://github.com/aio-libs/aioodbc) for async support). Data is stored in local [Parquet files](https://parquet.apache.org/) for further analysis.
 
