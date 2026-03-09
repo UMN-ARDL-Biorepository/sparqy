@@ -7,10 +7,11 @@ import argparse
 import asyncio
 
 import pyodbc
-import aioodbc
 import pandas as pd
 import environ
 from slugify import slugify
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 logger = getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -133,40 +134,65 @@ def parse_args():
     return parser.parse_args()
 
 
-def parse_sql_file(sql_file, trial_code):
+def parse_sql_file(sql_file):
     """
-    Parse the SQL file and return the SQL query.
+    Read the contents of a SQL file and return as a string.
+
+    Args:
+        sql_file (Union[str, Path]): Path to the .sql file.
+
+    Returns:
+        Optional[str]: The SQL query text, or None if the file is missing.
     """
     sql_file = Path(sql_file)
     if sql_file.exists():
         with open(sql_file, "r") as file:
-            raw_sql = file.read()
-            # Replace placeholders in the SQL query
-            sql = raw_sql.format(
-                TRIAL_CODE=trial_code,
-            )
-            return sql
+            return file.read()
     else:
         logger.error(f"SQL file not found: {sql_file}")
         return
 
 
 async def query_to_df(dsn, query, trial_code=None):
-    async with aioodbc.create_pool(dsn=dsn) as pool:
-        async with pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                if trial_code is not None:
-                    await cur.execute(query, (trial_code,))
-                else:
-                    await cur.execute(query)
-                rows = await cur.fetchall()
-                df = pd.DataFrame.from_records(
-                    rows, columns=[desc[0] for desc in cur.description]
-                )
+    """
+    Asynchronously execute a database query and return the results as a DataFrame.
+
+    Args:
+        dsn (str): ODBC connection string.
+        query (str): SQL query text to execute.
+        trial_code (Optional[str]): Trial code parameter for the query.
+
+    Returns:
+        pd.DataFrame: Query results as a pandas DataFrame.
+    """
+    # For aioodbc, we use mssql+aioodbc
+    connection_url = f"mssql+aioodbc:///?odbc_connect={dsn}"
+    engine = create_async_engine(connection_url)
+    try:
+        async with engine.connect() as conn:
+            # SQLAlchemy text() handles named parameters like :trial_code
+            params = {"trial_code": trial_code} if trial_code else {}
+            result = await conn.execute(text(query), params)
+            # Fetch all rows and create a DataFrame
+            rows = result.fetchall()
+            df = pd.DataFrame(rows, columns=result.keys())
+    finally:
+        await engine.dispose()
     return df
 
 
 def flag_viable(df, exclude_conditions, exclude_matcodes):
+    """
+    Apply viability rules to filter or mark specimens in the DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input specimen data.
+        exclude_conditions (list[str]): List of RECEIVED_CONDITION or SAMPLE_CONDITION values to exclude.
+        exclude_matcodes (list[str]): List of MATCODE values to exclude.
+
+    Returns:
+        pd.DataFrame: DataFrame with an added 'VIABLE' boolean column.
+    """
     logging.info(
         f"Flagging non-viable specimens based on conditions: {exclude_conditions} and matcodes: {exclude_matcodes}"
     )
@@ -221,6 +247,18 @@ def extract_sampleid(df):
 
 
 def parquet_path(trial_code, output_dir, include_dsn_in_filename, add_trial_to_path):
+    """
+    Construct the final filesystem path for the output parquet file.
+
+    Args:
+        trial_code (str): The trial code used for naming.
+        output_dir (Union[str, Path]): Base directory for output.
+        include_dsn_in_filename (bool): Whether to append '_PROD' to the filename.
+        add_trial_to_path (bool): Whether to nest the file in a trial-named subdirectory.
+
+    Returns:
+        Path: The absolute or relative Path object for the target file.
+    """
     # Add DSN to filename if specified
     if include_dsn_in_filename:
         final_parquet_file = f"{trial_code}_PROD"
@@ -239,6 +277,15 @@ def parquet_path(trial_code, output_dir, include_dsn_in_filename, add_trial_to_p
 
 
 def redact_dsn_password(dsn: str) -> str:
+    """
+    Redact the PWD parameter in a DSN string for safe logging.
+
+    Args:
+        dsn (str): Original ODBC connection string.
+
+    Returns:
+        str: Connection string with the password replaced by asterisks.
+    """
     # Replace PWD=...; with PWD=****;
     # handles case like PWD=password123;
     return re.sub(r"(PWD=)[^;]*", r"\1****", dsn, flags=re.IGNORECASE)
@@ -262,13 +309,37 @@ async def main(
     db_driver,
     debug=False,
 ):
+    """
+    Main orchestration function for the Sparqy data extraction process.
+
+    This function sets up logging, parses the SQL query, connects to the database,
+    fetches data, flags viability, and saves the final result to Parquet.
+
+    Args:
+        db_host (str): Database server address.
+        db_name (str): SQL database name.
+        db_port (int): Server port.
+        db_user (Optional[str]): Database username.
+        db_password (Optional[str]): Database password.
+        sql_file (str): Path to the source SQL file.
+        trial_code (str): Filter parameter for the query.
+        output_dir (str): Destination directory for parquet output.
+        add_trial_to_path (bool): Nested directory flag.
+        include_dsn_in_filename (bool): Filename suffix flag.
+        no_viable (bool): Flag to skip viability processing.
+        exclude_conditions (list[str]): Viability filters.
+        exclude_matcodes (list[str]): Matcode filters.
+        parquet_compression (str): Compression algo for the output file.
+        db_driver (str): Name of the ODBC driver to use.
+        debug (bool): Enable verbose logging.
+    """
     basicConfig(level=INFO if not debug else DEBUG)
     if not trial_code:
         logger.error("No trial code provided.")
         return
     try:
         logger.info(f"Processing trial inventory for {trial_code}...")
-        query = parse_sql_file(sql_file, trial_code)
+        query = parse_sql_file(sql_file)
         if not query:
             logger.error("Failed to parse SQL file.")
             return
@@ -283,6 +354,7 @@ async def main(
         logger.info(
             f"Connecting to database '{db_name}' on host '{db_host}' using driver '{db_driver}'"
         )
+        logger.debug(f"DSN: {redact_dsn_password(dsn)}")
         trial_inventory = await query_to_df(dsn, query, trial_code=trial_code)
         trial_inventory = extract_sampleid(trial_inventory)
         if not no_viable:
