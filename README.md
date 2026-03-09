@@ -4,7 +4,9 @@
 [![Dependabot Updates](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/dependabot/dependabot-updates)
 [![Prek checks](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/UMN-ARDL-Biorepository/sparqy/actions/workflows/pre-commit.yml)
 
-Sparqy downloads specimen data from a StarLIMS database using [Pandas](https://pandas.pydata.org/docs) and [PyODBC](https://learn.microsoft.com/en-us/sql/connect/python/pyodbc) and stores it in a local [Parquet file](https://parquet.apache.org/) for further analysis.
+Sparqy downloads specimen data from a StarLIMS database using [Pandas](https://pandas.pydata.org/docs), [SQLAlchemy](https://www.sqlalchemy.org/), and [PyODBC](https://learn.microsoft.com/en-us/sql/connect/python/pyodbc) (with [aioodbc](https://github.com/aio-libs/aioodbc) for async support). Data is stored in local [Parquet files](https://parquet.apache.org/) for further analysis.
+
+It supports **parameterized SQL queries** using SQLAlchemy's named parameter syntax (e.g., `:trial_code`).
 
 ## Installation
 
@@ -13,8 +15,16 @@ You'll need to install the uv package manager, instructions for which can be fou
 Once the prerequisites are installed, you can run sparqy using the following command:
 
 ```powershell
-cd C:\Users\<your_username>\Documents\GitHub\sparqy
 uv run .\main.py --trial_code "10KFS" --add_trial_to_path --include_dsn_in_filename
+```
+
+## Testing
+
+You can run the test suite using pytest via uv. Ensure you set the `PYTHONPATH` to include the current directory so the tests can import the main module.
+
+```powershell
+$env:PYTHONPATH="."
+uv run pytest tests.py
 ```
 
 You can edit the command-line arguments as needed to customize the behavior of sparqy for your specific use case. For example, you can change the `--trial_code` argument to process a different trial or modify the `--output_dir` argument to specify a different output location for the Parquet files.

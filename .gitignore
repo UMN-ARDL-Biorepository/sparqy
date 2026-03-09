@@ -16,3 +16,7 @@ wheels/
 # Pytest
 .pytest_cache
 .coverage
+
+# Output files
+*.parquet
+/output/
