@@ -662,7 +662,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "prek", specifier = ">=0.4.4" },
-    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest", specifier = ">=9.0.3" },
 ]
 
 [[package]]
